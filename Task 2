@@ -1,0 +1,132 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.datasets import fetch_california_housing
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+
+housing = fetch_california_housing(as_frame=True)
+df = housing.frame
+
+print(df.head())
+print(df.shape)
+df.info()
+print(df.describe())
+
+df["Rooms_per_Household"] = df["AveRooms"] / df["AveOccup"]
+df["Population_per_Household"] = df["Population"] / df["AveOccup"]
+df["Bedrooms_per_Room"] = df["AveBedrms"] / df["AveRooms"]
+
+X = df.drop("MedHouseVal", axis=1)
+y = df["MedHouseVal"]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+lr_model = LinearRegression()
+lr_model.fit(X_train_scaled, y_train)
+lr_pred = lr_model.predict(X_test_scaled)
+lr_rmse = np.sqrt(mean_squared_error(y_test, lr_pred))
+lr_r2 = r2_score(y_test, lr_pred)
+
+ridge_model = Ridge(alpha=1.0)
+ridge_model.fit(X_train_scaled, y_train)
+ridge_pred = ridge_model.predict(X_test_scaled)
+ridge_rmse = np.sqrt(mean_squared_error(y_test, ridge_pred))
+ridge_r2 = r2_score(y_test, ridge_pred)
+
+dt_model = DecisionTreeRegressor(max_depth=8, random_state=42)
+dt_model.fit(X_train, y_train)
+dt_pred = dt_model.predict(X_test)
+dt_rmse = np.sqrt(mean_squared_error(y_test, dt_pred))
+dt_r2 = r2_score(y_test, dt_pred)
+
+results = pd.DataFrame({
+    "Model": ["Linear Regression", "Ridge Regression", "Decision Tree"],
+    "RMSE": [lr_rmse, ridge_rmse, dt_rmse],
+    "R2 Score": [lr_r2, ridge_r2, dt_r2]
+})
+
+print(results)
+
+plt.figure()
+plt.scatter(y_test, lr_pred, label="Linear Regression")
+plt.scatter(y_test, ridge_pred, label="Ridge Regression")
+plt.scatter(y_test, dt_pred, label="Decision Tree")
+plt.xlabel("Actual Prices")
+plt.ylabel("Predicted Prices")
+plt.title("Actual vs Predicted Prices (All Models)")
+plt.legend()
+plt.show()
+
+plt.figure()
+plt.bar(results["Model"], results["RMSE"])
+plt.xlabel("Model")
+plt.ylabel("RMSE")
+plt.title("RMSE Comparison")
+plt.show()
+
+plt.figure()
+plt.bar(results["Model"], results["R2 Score"])
+plt.xlabel("Model")
+plt.ylabel("R2 Score")
+plt.title("R2 Score Comparison")
+plt.show()
+
+errors = y_test - dt_pred
+plt.figure()
+plt.hist(errors)
+plt.xlabel("Error")
+plt.ylabel("Frequency")
+plt.title("Error Distribution (Decision Tree)")
+plt.show()
+
+plt.figure()
+plt.scatter(dt_pred, errors)
+plt.axhline(y=0)
+plt.xlabel("Predicted Values")
+plt.ylabel("Residuals")
+plt.title("Residual Plot (Decision Tree)")
+plt.show()
+
+feature_importance = pd.Series(
+    dt_model.feature_importances_,
+    index=X.columns
+).sort_values(ascending=False)
+
+plt.figure()
+feature_importance.plot(kind="bar")
+plt.xlabel("Features")
+plt.ylabel("Importance")
+plt.title("Feature Importance (Decision Tree)")
+plt.show()
+
+plt.figure()
+plt.imshow(df.corr())
+plt.colorbar()
+plt.xticks(range(len(df.columns)), df.columns, rotation=90)
+plt.yticks(range(len(df.columns)), df.columns)
+plt.title("Correlation Heatmap")
+plt.show()
+
+plt.figure()
+plt.plot(range(50), y_test.iloc[:50], label="Actual")
+plt.plot(range(50), dt_pred[:50], label="Predicted")
+plt.xlabel("Sample Index")
+plt.ylabel("House Price")
+plt.title("Actual vs Predicted (Sample Data)")
+plt.legend()
+plt.show()
+
+best_model = results.loc[results["RMSE"].idxmin()]
+print("Best Model:")
+print(best_model)
