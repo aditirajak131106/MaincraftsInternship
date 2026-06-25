@@ -1,0 +1,144 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import roc_curve, auc
+
+from collections import Counter
+
+
+data = load_breast_cancer()
+X = data.data
+y = data.target
+
+df = pd.DataFrame(X, columns=data.feature_names)
+df["target"] = y
+
+Counter(y)
+
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.25, random_state=42, stratify=y
+)
+
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+lr = LogisticRegression(max_iter=1000)
+lr.fit(X_train, y_train)
+y_pred_lr = lr.predict(X_test)
+y_prob_lr = lr.predict_proba(X_test)[:, 1]
+
+
+print("Logistic Regression")
+print("Accuracy:", accuracy_score(y_test, y_pred_lr))
+print("Precision:", precision_score(y_test, y_pred_lr))
+print("Recall:", recall_score(y_test, y_pred_lr))
+print("F1 Score:", f1_score(y_test, y_pred_lr))
+
+
+cm_lr = confusion_matrix(y_test, y_pred_lr)
+sns.heatmap(cm_lr, annot=True, fmt="d", cmap="Blues")
+plt.title("Confusion Matrix - Logistic Regression")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+
+
+fpr, tpr, _ = roc_curve(y_test, y_prob_lr)
+roc_auc = auc(fpr, tpr)
+
+plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
+plt.plot([0, 1], [0, 1], linestyle="--")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve - Logistic Regression")
+plt.legend()
+plt.show()
+
+
+lr_balanced = LogisticRegression(max_iter=1000, class_weight="balanced")
+lr_balanced.fit(X_train, y_train)
+y_pred_lr_bal = lr_balanced.predict(X_test)
+y_prob_lr_bal = lr_balanced.predict_proba(X_test)[:, 1]
+
+
+print("Balanced Logistic Regression")
+print(classification_report(y_test, y_pred_lr_bal))
+
+
+cm_lr_bal = confusion_matrix(y_test, y_pred_lr_bal)
+sns.heatmap(cm_lr_bal, annot=True, fmt="d", cmap="Purples")
+plt.title("Confusion Matrix - Balanced Logistic Regression")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+
+
+fpr, tpr, _ = roc_curve(y_test, y_prob_lr_bal)
+roc_auc = auc(fpr, tpr)
+
+plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
+plt.plot([0, 1], [0, 1], linestyle="--")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve - Balanced Logistic Regression")
+plt.legend()
+plt.show()
+
+
+dt = DecisionTreeClassifier(random_state=42)
+dt.fit(X_train, y_train)
+y_pred_dt = dt.predict(X_test)
+y_prob_dt = dt.predict_proba(X_test)[:, 1]
+
+
+print("Decision Tree")
+print("Accuracy:", accuracy_score(y_test, y_pred_dt))
+print("Precision:", precision_score(y_test, y_pred_dt))
+print("Recall:", recall_score(y_test, y_pred_dt))
+print("F1 Score:", f1_score(y_test, y_pred_dt))
+
+
+cm_dt = confusion_matrix(y_test, y_pred_dt)
+sns.heatmap(cm_dt, annot=True, fmt="d", cmap="Greens")
+plt.title("Confusion Matrix - Decision Tree")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+
+
+fpr, tpr, _ = roc_curve(y_test, y_prob_dt)
+roc_auc = auc(fpr, tpr)
+
+plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
+plt.plot([0, 1], [0, 1], linestyle="--")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve - Decision Tree")
+plt.legend()
+plt.show()
+
+
+models = ["Logistic", "Balanced Logistic", "Decision Tree"]
+f1_scores = [
+    f1_score(y_test, y_pred_lr),
+    f1_score(y_test, y_pred_lr_bal),
+    f1_score(y_test, y_pred_dt)
+]
+
+plt.bar(models, f1_scores)
+plt.ylabel("F1 Score")
+plt.title("Model Comparison using F1 Score")
+plt.show()
